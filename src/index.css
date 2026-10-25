@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #09151a;
+  --panel: #11252a;
+  --line: #2c4649;
+  --text: #eaf6f1;
+  --muted: #a6c0b9;
+  --accent: #8beaaf;
+  --gold: #efcf91;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 85% 4%, #194438, transparent 30%),
+              radial-gradient(circle at 10% 90%, #0d2b25, transparent 40%),
+              var(--bg);
+  font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Range inputs */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: #29443f;
+  border-radius: 3px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+}
+
+/* Checkbox */
+input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Print */
+@media print {
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 11px;
+  }
+  nav, button, .actions, footer {
+    display: none !important;
+  }
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  [class*="border-[var(--line)]"] {
+    border-color: #ccc !important;
+  }
+  .bg-gradient-to-br {
+    background: white !important;
+  }
+  * {
+    color: #222 !important;
+    background: transparent !important;
+  }
+  h1, h2, h3 {
+    color: #111 !important;
+  }
+  .text-\[var\(--accent\)\] {
+    color: #1a7a4a !important;
+  }
+  .text-\[var\(--gold\)\] {
+    color: #8a6b2f !important;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+section {
+  animation: fadeIn 0.4s ease-out;
+}
