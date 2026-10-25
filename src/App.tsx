@@ -1,369 +1,545 @@
 import { useState, useCallback } from 'react';
+import { translations, type Lang } from './i18n';
+import {
+  criteria, phases, demoOpportunities, aiCases, energyScenarios, economicScenarios,
+  defaultDashboard, type QualificationStatus,
+} from './data';
 
-// Data
-const labels: [string, string][] = [
-  ['Necesidad territorial documentada', 'Problema real y beneficiario identificados'],
-  ['Interlocutor autorizado', 'Responsable capaz de evaluar la colaboración'],
-  ['Datos y permisos', 'Fuentes disponibles y derechos de uso'],
-  ['Viabilidad técnica', 'Prueba medible y restricciones conocidas'],
-  ['Viabilidad económica', 'Costes, financiación y contratación evaluados'],
-  ['Encaje confirmado con CCGreen', 'Validación expresa del promotor; nunca presupuesta'],
-  ['Próxima acción aceptada', 'Reunión o paso concreto confirmado por ambas partes'],
-];
-
-const phases = [
-  { period: 'Días 1–15', title: 'Validar interés y alcance', desc: 'Interlocutor, problema concreto, reglas de acceso, responsabilidades y contratación. Si no hay encaje, detener.' },
-  { period: 'Días 16–30', title: 'Mapa territorial', desc: 'Explorar actores, necesidades, permisos y línea base; no se presupone participación empresarial.' },
-  { period: 'Días 31–60', title: 'Pruebas de concepto', desc: 'Hasta dos casos en infraestructura independiente, con datos autorizados y criterios de evaluación previos.' },
-  { period: 'Días 61–75', title: 'Viabilidad y valor territorial', desc: 'Evaluar costes, requisitos, seguridad, capacidades, barreras y potencial de transferencia.' },
-  { period: 'Días 76–90', title: 'Dossier de decisión', desc: 'Entregar evidencias y recomendar continuar, reformular o cerrar.' },
-];
-
+// ---- Helpers ----
 function formatEuro(x: number): string {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(x);
 }
 
+function statusColor(s: QualificationStatus): string {
+  switch (s) {
+    case 'VERIFICADO': return 'text-[var(--accent)]';
+    case 'PENDIENTE_DE_EVIDENCIA': return 'text-[var(--gold)]';
+    default: return 'text-[var(--muted)]';
+  }
+}
+
+function statusLabel(s: QualificationStatus, lang: Lang): string {
+  if (lang === 'en') {
+    switch (s) {
+      case 'VERIFICADO': return 'VERIFIED';
+      case 'PENDIENTE_DE_EVIDENCIA': return 'PENDING EVIDENCE';
+      default: return 'NOT EVALUATED';
+    }
+  }
+  switch (s) {
+    case 'VERIFICADO': return 'VERIFICADO';
+    case 'PENDIENTE_DE_EVIDENCIA': return 'PENDIENTE DE EVIDENCIA';
+    default: return 'SIN EVALUAR';
+  }
+}
+
+// ---- Reusable Card ----
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`border border-[var(--line)] rounded-[17px] bg-gradient-to-br from-[#152e31] to-[#102025] p-5 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ children, color = 'var(--muted)' }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border" style={{ borderColor: color, color }}>
+      {children}
+    </span>
+  );
+}
+
+function Notice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-l-3 border-[var(--gold)] px-4 py-3 bg-[#28302c] rounded-r-lg text-[#ebdcc3] text-[13px] mt-4">
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4 font-bold">{children}</h2>;
+}
+
+function Btn({ children, onClick, variant = 'secondary', className = '' }: { children: React.ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary'; className?: string }) {
+  const base = 'inline-block rounded-[10px] font-bold px-4 py-3 cursor-pointer transition-all text-sm';
+  const styles = variant === 'primary'
+    ? 'bg-[var(--accent)] text-[#0b2521] hover:opacity-90'
+    : 'bg-transparent border border-[var(--line)] text-[var(--text)] hover:border-[var(--accent)]';
+  return <button onClick={onClick} className={`${base} ${styles} ${className}`}>{children}</button>;
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
 export default function App() {
+  const [lang, setLang] = useState<Lang>('es');
   const [checks, setChecks] = useState<boolean[]>(new Array(7).fill(false));
   const [price, setPrice] = useState(56250);
   const [cost, setCost] = useState(45000);
+  const [activeSection, setActiveSection] = useState('dashboard');
 
+  const t = translations[lang];
   const checkedCount = checks.filter(Boolean).length;
 
+  // Handlers
   const handleCheck = useCallback((i: number) => {
-    setChecks(prev => {
-      const next = [...prev];
-      next[i] = !next[i];
-      return next;
-    });
+    setChecks(prev => { const n = [...prev]; n[i] = !n[i]; return n; });
   }, []);
-
-  const handleReset = useCallback(() => {
-    setChecks(new Array(7).fill(false));
-  }, []);
-
-  const handleDemo = useCallback(() => {
-    setChecks(labels.map((_, i) => i !== 5));
-  }, []);
-
-  const handleRestore = useCallback(() => {
-    setPrice(56250);
-    setCost(45000);
-  }, []);
-
+  const handleReset = useCallback(() => setChecks(new Array(7).fill(false)), []);
+  const handleDemo = useCallback(() => setChecks(criteria.map((_, i) => i !== 5)), []);
+  const handleRestore = useCallback(() => { setPrice(56250); setCost(45000); }, []);
   const handleExport = useCallback(() => {
     const text = 'SIMULACIÓN CCGREEN — NO ES EVIDENCIA REAL\n' +
-      labels.map((x, i) => x[0] + ';' + (checks[i] ? 'MARCADO DEMO' : 'PENDIENTE')).join('\n');
+      criteria.map((x, i) => x.label + ';' + (checks[i] ? 'MARCADO DEMO' : 'PENDIENTE')).join('\n');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ccgreen_ficha_demo.txt';
-    a.click();
+    a.href = url; a.download = 'ccgreen_ficha_demo.txt'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, [checks]);
 
   const margin = price - cost;
   const percent = ((price - cost) / price * 100).toFixed(1).replace('.', ',') + ' %';
+  const statusText = checkedCount === 7 ? t.status_full : checkedCount > 0 ? t.status_partial : t.status_none;
 
-  const statusText = checkedCount === 7
-    ? '7 criterios marcados · SOLO DEMO'
-    : checkedCount > 0
-      ? 'Evaluación incompleta · DEMO'
-      : 'Sin cualificar';
+  // Energy simulation values
+  const energyProd = 41250;
+  const aiConsumption = Math.round(energyProd * 0.12);
+  const costPerTask = 0.023;
+  const flexibilityPct = 18;
+
+  // Nav items
+  const navItems = [
+    { id: 'dashboard', label: t.nav_dashboard },
+    { id: 'valor', label: t.nav_proposal },
+    { id: 'plan', label: t.nav_plan },
+    { id: 'evaluacion', label: t.nav_evaluation },
+    { id: 'ai', label: t.nav_ai },
+    { id: 'energia', label: t.nav_energy },
+    { id: 'economia', label: t.nav_economics },
+    { id: 'consorcio', label: t.nav_consortium },
+    { id: 'alianza', label: t.nav_alliance },
+  ];
+
+  const scrollTo = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
-    <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-6">
-      {/* Header */}
+    <div className="max-w-[1180px] mx-auto px-4 md:px-6 py-6">
+      {/* ====== HEADER ====== */}
       <header className="flex justify-between gap-4 items-center flex-wrap">
         <div className="font-extrabold tracking-wider text-lg">
           MONTEMOLIN<span className="text-[var(--accent)]">—AIHUB</span>
         </div>
-        <nav className="flex gap-3.5 flex-wrap">
-          <a href="#valor" className="text-[var(--muted)] no-underline text-[13px] hover:text-[var(--accent)] transition-colors">Propuesta</a>
-          <a href="#plan" className="text-[var(--muted)] no-underline text-[13px] hover:text-[var(--accent)] transition-colors">90 días</a>
-          <a href="#evaluacion" className="text-[var(--muted)] no-underline text-[13px] hover:text-[var(--accent)] transition-colors">Evaluación</a>
-          <a href="#economia" className="text-[var(--muted)] no-underline text-[13px] hover:text-[var(--accent)] transition-colors">Economía</a>
-          <a href="#alianza" className="text-[var(--muted)] no-underline text-[13px] hover:text-[var(--accent)] transition-colors">Alianza</a>
+        <nav className="flex gap-2 flex-wrap">
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => scrollTo(item.id)}
+              className={`text-[12px] px-2 py-1 rounded-md transition-colors cursor-pointer ${activeSection === item.id ? 'text-[var(--accent)] bg-[var(--accent)]/10' : 'text-[var(--muted)] hover:text-[var(--accent)]'}`}>
+              {item.label}
+            </button>
+          ))}
         </nav>
-        <div className="border border-[var(--line)] rounded-full px-3 py-1 text-[var(--muted)] text-xs">
-          Propuesta independiente · DEMO
+        <div className="flex items-center gap-2">
+          <button onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+            className="text-xs border border-[var(--line)] rounded-full px-2.5 py-0.5 text-[var(--muted)] cursor-pointer hover:border-[var(--accent)] transition-colors">
+            {lang === 'es' ? 'EN' : 'ES'}
+          </button>
+          <div className="border border-[var(--line)] rounded-full px-3 py-1 text-[var(--muted)] text-xs">{t.tag}</div>
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="pt-16 md:pt-20 pb-14">
-        <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)]">
-          CCGreen · Cáceres · Piloto exploratorio
-        </div>
-        <h1 className="text-[clamp(36px,6vw,66px)] leading-[1.08] tracking-[-0.05em] max-w-[880px] my-3.5 font-bold">
-          De la infraestructura digital al <span className="text-[var(--accent)]">impacto empresarial y territorial.</span>
+      {/* ====== HERO ====== */}
+      <div className="pt-14 md:pt-20 pb-12">
+        <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)]">{t.eyebrow}</div>
+        <h1 className="text-[clamp(34px,6vw,64px)] leading-[1.08] tracking-[-0.05em] max-w-[880px] my-3 font-bold">
+          {t.title_part1} <span className="text-[var(--accent)]">{t.title_part2}</span>
         </h1>
-        <p className="text-xl max-w-[800px] text-[var(--muted)] my-2">
-          Piloto de 90 días para identificar oportunidades de innovación, validar aplicaciones de IA industrial y documentar posibles colaboraciones de energía limpia en Extremadura.
-        </p>
+        <p className="text-xl max-w-[800px] text-[var(--muted)] my-2">{t.lead}</p>
         <div className="flex gap-2.5 flex-wrap mt-6">
-          <a href="#evaluacion" className="inline-block bg-[var(--accent)] rounded-[10px] text-[#0b2521] font-bold px-4.5 py-3 no-underline hover:opacity-90 transition-opacity">
-            Probar evaluación interactiva
-          </a>
-          <a href="#alianza" className="inline-block bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 no-underline hover:border-[var(--accent)] transition-colors">
-            Ver propuesta de colaboración
-          </a>
+          <button onClick={() => scrollTo('evaluacion')} className="inline-block bg-[var(--accent)] rounded-[10px] text-[#0b2521] font-bold px-4 py-3 cursor-pointer hover:opacity-90 transition-opacity text-sm">
+            {t.btn_eval}
+          </button>
+          <button onClick={() => scrollTo('alianza')} className="inline-block bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors text-sm">
+            {t.btn_collab}
+          </button>
         </div>
-        <p className="text-xs text-[var(--muted)] mt-4">
-          Prototipo no solicitado. No existe colaboración, contrato ni aprobación acreditada de CCGreen.
-        </p>
+        <p className="text-xs text-[var(--muted)] mt-4">{t.disclaimer_hero}</p>
       </div>
 
-      {/* Value Proposition */}
-      <section id="valor" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">¿Qué podría aportar MONTEMOLIN-AIHUB?</h2>
+      {/* ====== DASHBOARD ====== */}
+      <section id="dashboard" className="my-8 mb-14">
+        <SectionTitle>{t.dash_title}</SectionTitle>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <DashCard label={t.dash_status} value={defaultDashboard.pilotStatus} icon="📡" />
+          <DashCard label={t.dash_phase} value={`${defaultDashboard.currentPhase} / 5`} icon="📅" />
+          <DashCard label={t.dash_opps} value={String(demoOpportunities.length)} icon="🔍" />
+          <DashCard label={t.dash_cases} value={String(aiCases.length)} icon="🧪" />
+          <DashCard label={t.dash_criteria} value={`${checkedCount} / 7`} icon="✅" />
+          <DashCard label={t.dash_risks} value={String(defaultDashboard.pendingRisks)} icon="⚠️" />
+          <DashCard label={t.dash_cost} value={formatEuro(defaultDashboard.estimatedCost)} icon="💶" />
+          <DashCard label={t.dash_next} value={defaultDashboard.nextDecision} icon="🎯" />
+        </div>
+        <Notice>{t.dash_note}</Notice>
+      </section>
+
+      {/* ====== VALUE PROPOSITION ====== */}
+      <section id="valor" className="my-8 mb-14">
+        <SectionTitle>{t.value_title}</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">01 · Empresas</div>
-            <h3 className="text-lg font-semibold mb-2">Ecosistema regional</h3>
-            <p className="text-[var(--muted)] my-1.5">Detectar necesidades empresariales reales, responsables, datos y posibilidades de colaboración industrial.</p>
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">A · {lang === 'es' ? 'Empresas' : 'Business'}</div>
+            <h3 className="text-lg font-semibold mb-2">{t.val_a_title}</h3>
+            <p className="text-[var(--muted)] my-1.5 text-sm">{t.val_a_desc}</p>
           </Card>
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">02 · Tecnología</div>
-            <h3 className="text-lg font-semibold mb-2">Demostradores de IA</h3>
-            <p className="text-[var(--muted)] my-1.5">Explorar inteligencia documental, visión artificial y automatización mediante pruebas limitadas y medibles.</p>
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">B · {lang === 'es' ? 'Tecnología' : 'Technology'}</div>
+            <h3 className="text-lg font-semibold mb-2">{t.val_b_title}</h3>
+            <p className="text-[var(--muted)] my-1.5 text-sm">{t.val_b_desc}</p>
           </Card>
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">03 · Energía</div>
-            <h3 className="text-lg font-semibold mb-2">Innovación renovable</h3>
-            <p className="text-[var(--muted)] my-1.5">Analizar prefactibilidad, consumo por tarea y oportunidades de eficiencia, sin prometer suministro eléctrico.</p>
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">C · {lang === 'es' ? 'Energía' : 'Energy'}</div>
+            <h3 className="text-lg font-semibold mb-2">{t.val_c_title}</h3>
+            <p className="text-[var(--muted)] my-1.5 text-sm">{t.val_c_desc}</p>
           </Card>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">90 días</div>
-            <div className="text-xs text-[var(--muted)]">Duración propuesta, sujeta a contratación</div>
+            <div className="text-4xl font-extrabold tracking-[-0.04em]">{t.metric_days}</div>
+            <div className="text-xs text-[var(--muted)]">{t.metric_days_desc}</div>
           </Card>
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">2</div>
-            <div className="text-xs text-[var(--muted)]">Máximo de demostradores técnicos propuestos</div>
+            <div className="text-4xl font-extrabold tracking-[-0.04em]">{t.metric_demos}</div>
+            <div className="text-xs text-[var(--muted)]">{t.metric_demos_desc}</div>
           </Card>
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">0</div>
-            <div className="text-xs text-[var(--muted)]">Colaboraciones o empresas confirmadas en esta demostración</div>
+            <div className="text-4xl font-extrabold tracking-[-0.04em]">{t.metric_zero}</div>
+            <div className="text-xs text-[var(--muted)]">{t.metric_zero_desc}</div>
           </Card>
         </div>
       </section>
 
-      {/* Plan / Roadmap */}
-      <section id="plan" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">Hoja de ruta y puntos de decisión</h2>
+      {/* ====== ROADMAP ====== */}
+      <section id="plan" className="my-8 mb-14">
+        <SectionTitle>{t.plan_title}</SectionTitle>
         <Card>
           {phases.map((phase, i) => (
             <div key={i} className={`flex gap-5 py-4 ${i < phases.length - 1 ? 'border-b border-[var(--line)]' : ''}`}>
-              <b className="min-w-[78px] text-[var(--accent)] shrink-0">{phase.period}</b>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">{phase.title}</h3>
-                <p className="text-[var(--muted)] my-0">{phase.desc}</p>
+              <b className="min-w-[78px] text-[var(--accent)] shrink-0 text-sm">{phase.period}</b>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-semibold">{phase.title}</h3>
+                  <Badge color={phase.status === 'active' ? 'var(--gold)' : phase.status === 'completed' ? 'var(--accent)' : 'var(--muted)'}>
+                    {phase.status === 'active' ? (lang === 'es' ? 'EN CURSO' : 'ACTIVE') : phase.status === 'completed' ? (lang === 'es' ? 'COMPLETADA' : 'DONE') : (lang === 'es' ? 'PENDIENTE' : 'PENDING')}
+                  </Badge>
+                </div>
+                <p className="text-[var(--muted)] my-0 text-sm">{phase.description}</p>
               </div>
             </div>
           ))}
         </Card>
       </section>
 
-      {/* Evaluation */}
-      <section id="evaluacion" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">Evaluador de oportunidad territorial</h2>
-        <p className="text-[var(--muted)] my-2">Prueba los criterios de selección. Todas las casillas representan una simulación; no verifican proyectos reales.</p>
+      {/* ====== EVALUATION ====== */}
+      <section id="evaluacion" className="my-8 mb-14">
+        <SectionTitle>{t.eval_title}</SectionTitle>
+        <p className="text-[var(--muted)] my-2 text-sm">{t.eval_desc}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Checks panel */}
           <Card>
-            <div>
-              {labels.map((label, i) => (
-                <label key={i} className="flex gap-3 items-start p-3 border border-[var(--line)] rounded-[10px] my-2 cursor-pointer hover:border-[var(--accent)]/40 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={checks[i]}
-                    onChange={() => handleCheck(i)}
-                    className="accent-[var(--accent)] w-[19px] h-[19px] mt-0.5 shrink-0"
-                  />
-                  <div>
-                    <strong className="block">{label[0]}</strong>
-                    <span className="text-xs text-[var(--muted)]">{label[1]}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2.5 flex-wrap mt-6">
-              <button onClick={handleReset} className="bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors">
-                Reiniciar
-              </button>
-              <button onClick={handleDemo} className="bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors">
-                Ejemplo simulado
-              </button>
+            {criteria.map((c, i) => (
+              <label key={c.id} className="flex gap-3 items-start p-3 border border-[var(--line)] rounded-[10px] my-2 cursor-pointer hover:border-[var(--accent)]/40 transition-colors">
+                <input type="checkbox" checked={checks[i]} onChange={() => handleCheck(i)}
+                  className="accent-[var(--accent)] w-[19px] h-[19px] mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <strong className="block text-sm">{c.label}</strong>
+                  <span className="text-xs text-[var(--muted)]">{c.description}</span>
+                </div>
+              </label>
+            ))}
+            <div className="flex gap-2 flex-wrap mt-5">
+              <Btn onClick={handleReset}>{t.btn_reset}</Btn>
+              <Btn onClick={handleDemo}>{t.btn_demo}</Btn>
             </div>
           </Card>
 
-          {/* Result panel */}
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">Resultado de la demostración</div>
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">{t.eval_result}</div>
             <div className="text-4xl font-extrabold tracking-[-0.04em]">{checkedCount} / 7</div>
             <div className="h-2.5 bg-[#29443f] rounded-full overflow-hidden my-4">
-              <div
-                className="h-full bg-[var(--accent)] transition-all duration-200"
-                style={{ width: `${(checkedCount / 7) * 100}%` }}
-              />
+              <div className="h-full bg-[var(--accent)] transition-all duration-300" style={{ width: `${(checkedCount / 7) * 100}%` }} />
             </div>
             <div className="text-[var(--gold)] font-bold">{statusText}</div>
-            <h3 className="text-lg font-semibold mt-7 mb-2">La evidencia es imprescindible</h3>
-            <p className="text-[var(--muted)] my-1.5">El interés de una empresa no constituye un acuerdo. La participación de CCGreen, el acceso a datos y la viabilidad de una colaboración energética deben confirmarse expresamente.</p>
-            <div className="border-l-3 border-[var(--gold)] px-4 py-3 bg-[#28302c] rounded-r-lg text-[#ebdcc3] text-[13px] mt-4">
-              Ningún resultado de esta pantalla acredita contratos, inversión, subvenciones, empleos o energía disponible.
+
+            {/* Opportunities table */}
+            <h3 className="text-sm font-semibold mt-6 mb-2">{lang === 'es' ? 'Oportunidades en evaluación' : 'Opportunities under review'}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[var(--muted)]">
+                    <th className="text-left py-1.5 border-b border-[var(--line)]">ID</th>
+                    <th className="text-left py-1.5 border-b border-[var(--line)]">{lang === 'es' ? 'Sector' : 'Sector'}</th>
+                    <th className="text-left py-1.5 border-b border-[var(--line)]">{lang === 'es' ? 'Estado' : 'Status'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {demoOpportunities.map(opp => (
+                    <tr key={opp.id}>
+                      <td className="py-1.5 border-b border-[var(--line)] font-mono">{opp.id}</td>
+                      <td className="py-1.5 border-b border-[var(--line)]">{opp.sector}</td>
+                      <td className={`py-1.5 border-b border-[var(--line)] ${statusColor(opp.overallStatus)}`}>{statusLabel(opp.overallStatus, lang)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="flex gap-2.5 flex-wrap mt-6">
-              <button onClick={handleExport} className="bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors">
-                Exportar ficha DEMO
-              </button>
+
+            <h3 className="text-sm font-semibold mt-6 mb-2">{t.eval_evidence}</h3>
+            <p className="text-[var(--muted)] my-1.5 text-sm">{t.eval_evidence_desc}</p>
+            <Notice>{t.eval_notice}</Notice>
+            <div className="flex gap-2 flex-wrap mt-5">
+              <Btn onClick={handleExport}>{t.btn_export}</Btn>
             </div>
           </Card>
         </div>
       </section>
 
-      {/* Energy */}
-      <section id="energia" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">Montemolín: energía limpia como hipótesis de colaboración</h2>
+      {/* ====== AI CASES ====== */}
+      <section id="ai" className="my-8 mb-14">
+        <SectionTitle>{t.ai_title}</SectionTitle>
+        <p className="text-[var(--muted)] my-2 text-sm">{t.ai_desc}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {aiCases.map(c => (
+            <Card key={c.id}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)]">
+                  {c.id === 'CASE-A' ? t.ai_doc_title : t.ai_vision_title}
+                </div>
+                <Badge color="var(--gold)">{c.status}</Badge>
+              </div>
+              <div className="space-y-2">
+                {c.metrics.map((m, i) => (
+                  <div key={i} className="flex justify-between items-center py-1.5 border-b border-[var(--line)] last:border-0">
+                    <div>
+                      <div className="text-sm">{m.label}</div>
+                      <div className="text-[10px] text-[var(--muted)]">{m.note}</div>
+                    </div>
+                    <div className="text-sm font-mono text-[var(--muted)]">{m.value}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ====== ENERGY ====== */}
+      <section id="energia" className="my-8 mb-14">
+        <SectionTitle>{t.energy_title}</SectionTitle>
+        <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-4">{t.energy_module}</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {energyScenarios.map((s, i) => (
+            <Card key={i}>
+              <div className="text-sm font-bold text-[var(--accent)] mb-2">{s.label}</div>
+              <div className="text-3xl font-extrabold tracking-[-0.04em]">{s.power}</div>
+              <div className="text-sm text-[var(--text)] mt-1">{s.production}</div>
+              <div className="text-sm text-[var(--muted)] mt-1">{s.investment}</div>
+              <p className="text-xs text-[var(--muted)] mt-2">{s.note}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Energy simulations */}
+        <h3 className="text-lg font-semibold mt-8 mb-4">{t.energy_sim_title}</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">25 MWp</div>
-            <p className="text-[var(--muted)] my-1.5">Escenario fotovoltaico de prefactibilidad de RURAL-GOV-ENERGY, no potencia instalada.</p>
+            <div className="text-xs text-[var(--muted)] mb-1">{t.energy_sim_prod}</div>
+            <div className="text-2xl font-extrabold">{energyProd.toLocaleString('es-ES')} MWh</div>
+            <div className="text-[10px] text-[var(--muted)] mt-1">{lang === 'es' ? 'Hipótesis de prefactibilidad' : 'Pre-feasibility hypothesis'}</div>
           </Card>
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">41.250</div>
-            <p className="text-[var(--muted)] my-1.5">MWh/año de producción inicial modelizada, no energía generada ni comprometida.</p>
+            <div className="text-xs text-[var(--muted)] mb-1">{t.energy_sim_ai}</div>
+            <div className="text-2xl font-extrabold">{aiConsumption.toLocaleString('es-ES')} MWh</div>
+            <div className="text-[10px] text-[var(--muted)] mt-1">~12% {lang === 'es' ? 'de producción estimada' : 'of estimated production'}</div>
           </Card>
           <Card>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]">22,24 M€</div>
-            <p className="text-[var(--muted)] my-1.5">Inversión estimada en el escenario de estudio, no financiación obtenida.</p>
+            <div className="text-xs text-[var(--muted)] mb-1">{t.energy_sim_task}</div>
+            <div className="text-2xl font-extrabold">€{costPerTask}</div>
+            <div className="text-[10px] text-[var(--muted)] mt-1">{lang === 'es' ? 'Estimación orientativa' : 'Indicative estimate'}</div>
+          </Card>
+          <Card>
+            <div className="text-xs text-[var(--muted)] mb-1">{t.energy_sim_flex}</div>
+            <div className="text-2xl font-extrabold">{flexibilityPct}%</div>
+            <div className="text-[10px] text-[var(--muted)] mt-1">{lang === 'es' ? 'Flexibilidad modelizada' : 'Modeled flexibility'}</div>
           </Card>
         </div>
-        <div className="border-l-3 border-[var(--gold)] px-4 py-3 bg-[#28302c] rounded-r-lg text-[#ebdcc3] text-[13px] mt-4">
-          No se ha verificado conexión a red, permisos, P90, precio PPA ni posibilidad de entrega al proyecto CCGreen. El piloto propone estudiar, no garantizar, esa complementariedad.
-        </div>
+        <Notice>{t.energy_warning}</Notice>
       </section>
 
-      {/* Economics */}
-      <section id="economia" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">Economía del piloto: escenarios orientativos</h2>
+      {/* ====== ECONOMICS ====== */}
+      <section id="economia" className="my-8 mb-14">
+        <SectionTitle>{t.econ_title}</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Reference model */}
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">Modelo de referencia</div>
-            <table className="w-full border-collapse">
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">{t.econ_ref}</div>
+            <table className="w-full border-collapse text-sm">
               <tbody>
-                <tr><td className="border-b border-[var(--line)] py-2">Coste directo propuesto</td><td className="border-b border-[var(--line)] py-2 text-right">45.000 €</td></tr>
-                <tr><td className="border-b border-[var(--line)] py-2">Precio orientativo</td><td className="border-b border-[var(--line)] py-2 text-right">56.250 €</td></tr>
-                <tr><td className="border-b border-[var(--line)] py-2">Margen bruto</td><td className="border-b border-[var(--line)] py-2 text-right">11.250 €</td></tr>
-                <tr><td className="border-b border-[var(--line)] py-2">Margen sobre ventas</td><td className="border-b border-[var(--line)] py-2 text-right">20 %</td></tr>
+                <tr><td className="border-b border-[var(--line)] py-2">{t.econ_table_cost}</td><td className="border-b border-[var(--line)] py-2 text-right font-mono">45.000 €</td></tr>
+                <tr><td className="border-b border-[var(--line)] py-2">{t.econ_table_price}</td><td className="border-b border-[var(--line)] py-2 text-right font-mono">56.250 €</td></tr>
+                <tr><td className="border-b border-[var(--line)] py-2">{t.econ_table_margin}</td><td className="border-b border-[var(--line)] py-2 text-right font-mono">11.250 €</td></tr>
+                <tr><td className="border-b border-[var(--line)] py-2">{t.econ_table_percent}</td><td className="border-b border-[var(--line)] py-2 text-right font-mono">20 %</td></tr>
               </tbody>
             </table>
-            <p className="text-xs text-[var(--muted)] mt-2">Sin IVA. No es presupuesto aceptado ni oferta contractual.</p>
-            <h3 className="text-lg font-semibold mt-5 mb-2">Entregables</h3>
-            <p className="text-[var(--muted)] my-1.5">Mapa de oportunidades, dos fichas técnicas como máximo, matriz de viabilidad, riesgos, evaluación de complementariedad energética y recomendación ejecutiva.</p>
+            <p className="text-xs text-[var(--muted)] mt-2">{t.econ_table_note}</p>
+            <h3 className="text-sm font-semibold mt-5 mb-2">{t.econ_deliverables_title}</h3>
+            <p className="text-[var(--muted)] my-1.5 text-sm">{t.econ_deliverables}</p>
+
+            {/* Scenarios */}
+            <h3 className="text-sm font-semibold mt-5 mb-3">{t.econ_scenarios}</h3>
+            <div className="space-y-2">
+              {economicScenarios.map((s, i) => {
+                const m = s.price - s.cost;
+                const mp = ((m / s.price) * 100).toFixed(1);
+                return (
+                  <div key={i} className="flex justify-between items-center py-2 px-3 border border-[var(--line)] rounded-lg">
+                    <div>
+                      <div className="text-sm font-bold">{s.name}</div>
+                      <div className="text-[10px] text-[var(--muted)]">{s.description}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-mono" style={{ color: m >= 0 ? 'var(--accent)' : '#f2a995' }}>{formatEuro(m)}</div>
+                      <div className="text-[10px] text-[var(--muted)]">{mp}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
 
           {/* Simulator */}
           <Card>
-            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">Simulador económico</div>
+            <div className="uppercase text-xs tracking-[0.13em] font-extrabold text-[var(--accent)] mb-2">{t.econ_sim}</div>
             <label className="block my-5">
-              <div className="flex justify-between mb-1">
-                <span>Precio propuesto</span>
-                <span className="font-bold">{formatEuro(price)}</span>
+              <div className="flex justify-between mb-1 text-sm">
+                <span>{t.econ_price}</span>
+                <span className="font-bold font-mono">{formatEuro(price)}</span>
               </div>
-              <input
-                type="range"
-                min={30000}
-                max={90000}
-                step={250}
-                value={price}
-                onChange={e => setPrice(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
-              />
+              <input type="range" min={30000} max={90000} step={250} value={price}
+                onChange={e => setPrice(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
             </label>
             <label className="block my-5">
-              <div className="flex justify-between mb-1">
-                <span>Coste directo</span>
-                <span className="font-bold">{formatEuro(cost)}</span>
+              <div className="flex justify-between mb-1 text-sm">
+                <span>{t.econ_cost}</span>
+                <span className="font-bold font-mono">{formatEuro(cost)}</span>
               </div>
-              <input
-                type="range"
-                min={25000}
-                max={80000}
-                step={250}
-                value={cost}
-                onChange={e => setCost(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
-              />
+              <input type="range" min={25000} max={80000} step={250} value={cost}
+                onChange={e => setCost(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
             </label>
-            <div className="text-xs text-[var(--muted)]">Margen bruto calculado</div>
-            <div className="text-4xl font-extrabold tracking-[-0.04em]" style={{ color: margin < 0 ? '#f2a995' : 'var(--accent)' }}>
+            <div className="text-xs text-[var(--muted)]">{t.econ_margin}</div>
+            <div className="text-4xl font-extrabold tracking-[-0.04em] mt-1" style={{ color: margin < 0 ? '#f2a995' : 'var(--accent)' }}>
               {formatEuro(margin)}
             </div>
-            <p className="text-[var(--muted)]">{percent} sobre ventas</p>
-            <div className="border-l-3 border-[var(--gold)] px-4 py-3 bg-[#28302c] rounded-r-lg text-[#ebdcc3] text-[13px] mt-4">
-              No incluye gastos generales, impuestos ni financiación. Modificar controles no genera una oferta comercial.
-            </div>
-            <div className="flex gap-2.5 flex-wrap mt-6">
-              <button onClick={handleRestore} className="bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors">
-                Restablecer
-              </button>
+            <p className="text-[var(--muted)] text-sm">{percent} {lang === 'es' ? 'sobre ventas' : 'on sales'}</p>
+            <Notice>{t.econ_notice}</Notice>
+            <div className="flex gap-2 flex-wrap mt-5">
+              <Btn onClick={handleRestore}>{t.btn_restore}</Btn>
             </div>
           </Card>
         </div>
       </section>
 
-      {/* Alliance */}
-      <section id="alianza" className="my-8 mb-16">
-        <h2 className="text-[clamp(24px,3vw,35px)] tracking-[-0.03em] mb-4.5 font-bold">Una colaboración que primero debe demostrar su encaje</h2>
+      {/* ====== CONSORTIUM ====== */}
+      <section id="consorcio" className="my-8 mb-14">
+        <SectionTitle>{t.cons_title}</SectionTitle>
         <Card>
-          <p className="text-xl max-w-[800px] text-[var(--text)] my-2">
-            ¿Vería CCGreen interés en evaluar un piloto independiente que conecte innovación empresarial, aplicaciones industriales de IA y posibles complementariedades energéticas en Extremadura?
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Si hay interés</h3>
-              <p className="text-[var(--muted)] my-1.5">Identificar decisor, necesidades, permisos, modelo de colaboración y procedimiento de compra.</p>
+              <div className="flex gap-4 mb-4">
+                <div>
+                  <div className="text-xs text-[var(--muted)]">{t.cons_ref}</div>
+                  <div className="text-sm font-mono font-bold">SEP-211421662</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)]">{t.cons_call}</div>
+                  <div className="text-sm font-mono font-bold">I3-2026-INV2a</div>
+                </div>
+              </div>
+              <p className="text-[var(--muted)] text-sm">{t.cons_desc}</p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-2">Si el encaje es parcial</h3>
-              <p className="text-[var(--muted)] my-1.5">Reducir alcance o enfocarlo en una única necesidad verificable.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Si no hay encaje</h3>
-              <p className="text-[var(--muted)] my-1.5">Detener la iniciativa sin asumir que existe un compromiso.</p>
+              <h3 className="text-sm font-semibold mb-3">{t.cons_matrix}</h3>
+              <div className="space-y-2">
+                {[
+                  lang === 'es' ? 'Socio técnico en demostradores de IA' : 'Technical partner in AI demonstrators',
+                  lang === 'es' ? 'Validación de complementariedad energética' : 'Energy complementarity validation',
+                  lang === 'es' ? 'Contribución al mapa territorial' : 'Contribution to territorial mapping',
+                  lang === 'es' ? 'Co-diseño de entregables' : 'Co-design of deliverables',
+                  lang === 'es' ? 'Participación en difusión y resultados' : 'Participation in dissemination & results',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1.5 px-3 border border-[var(--line)] rounded-lg text-sm">
+                    <span className="text-[var(--accent)]">○</span>
+                    <span>{item}</span>
+                    <Badge color="var(--gold)">{lang === 'es' ? 'SUJETO A ELEGIBILIDAD' : 'SUBJECT TO ELIGIBILITY'}</Badge>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[var(--muted)] mt-3">{t.cons_matrix_note}</p>
             </div>
           </div>
-          <h3 className="text-lg font-semibold mt-6 mb-2">Cooperación europea</h3>
-          <p className="text-[var(--muted)] my-1.5">Podría estudiarse una colaboración futura con MONTEMOLIN-AIHUB y la propuesta I3-2026-INV2a, referencia SEP-211421662. La documentación disponible no acredita subvención concedida, incorporación formal de CCGreen ni elegibilidad de cambios en el consorcio.</p>
+        </Card>
+      </section>
+
+      {/* ====== ALLIANCE ====== */}
+      <section id="alianza" className="my-8 mb-14">
+        <SectionTitle>{t.alliance_title}</SectionTitle>
+        <Card>
+          <p className="text-xl max-w-[800px] text-[var(--text)] my-2">{t.alliance_lead}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div>
+              <h3 className="text-sm font-semibold mb-2">{t.alliance_yes}</h3>
+              <p className="text-[var(--muted)] my-1.5 text-sm">{t.alliance_yes_desc}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold mb-2">{t.alliance_partial}</h3>
+              <p className="text-[var(--muted)] my-1.5 text-sm">{t.alliance_partial_desc}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold mb-2">{t.alliance_no}</h3>
+              <p className="text-[var(--muted)] my-1.5 text-sm">{t.alliance_no_desc}</p>
+            </div>
+          </div>
           <div className="flex gap-2.5 flex-wrap mt-6">
-            <button onClick={() => window.print()} className="bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 cursor-pointer hover:border-[var(--accent)] transition-colors">
-              Imprimir presentación
-            </button>
-            <a href="https://montemolin-aihub.vercel.app/" target="_blank" rel="noopener noreferrer" className="inline-block bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4.5 py-3 no-underline hover:border-[var(--accent)] transition-colors">
-              Conocer MONTEMOLIN-AIHUB
+            <Btn onClick={() => window.print()}>{t.btn_print}</Btn>
+            <a href="https://montemolin-aihub.vercel.app/" target="_blank" rel="noopener noreferrer"
+              className="inline-block bg-transparent border border-[var(--line)] rounded-[10px] text-[var(--text)] font-bold px-4 py-3 no-underline hover:border-[var(--accent)] transition-colors text-sm">
+              {t.btn_montemolin}
             </a>
           </div>
         </Card>
       </section>
 
-      {/* Footer */}
+      {/* ====== FOOTER ====== */}
       <footer className="border-t border-[var(--line)] pt-6 pb-6 text-[var(--muted)] text-xs">
-        Propuesta independiente de MONTEMOLIN-AIHUB. No es una página oficial de CCGreen ni implica patrocinio o colaboración. Datos económicos y energéticos: escenarios internos sujetos a verificación. La aplicación no almacena ni transmite información introducida.
+        {t.footer}
       </footer>
     </div>
   );
 }
 
-// Reusable Card component
-function Card({ children }: { children: React.ReactNode }) {
+// ---- Dashboard Card ----
+function DashCard({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
-    <div className="border border-[var(--line)] rounded-[17px] bg-gradient-to-br from-[#152e31] to-[#102025] p-5.5">
-      {children}
-    </div>
+    <Card className="!p-4">
+      <div className="flex items-start gap-2">
+        <span className="text-lg">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] text-[var(--muted)] uppercase tracking-wider">{label}</div>
+          <div className="text-sm font-bold mt-0.5 truncate">{value}</div>
+        </div>
+      </div>
+    </Card>
   );
 }
