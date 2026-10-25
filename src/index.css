@@ -1,1 +1,45 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #09151a;
+  --panel: #11252a;
+  --line: #2c4649;
+  --text: #eaf6f1;
+  --muted: #a6c0b9;
+  --accent: #8beaaf;
+  --gold: #efcf91;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 85% 4%, #194438, transparent 30%), var(--bg);
+  font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+@media print {
+  body {
+    background: white;
+    color: #111;
+  }
+  .card {
+    background: white !important;
+    color: #111 !important;
+    border-color: #aaa !important;
+  }
+  p, .small {
+    color: #444 !important;
+  }
+  button, nav, .actions {
+    display: none !important;
+  }
+}
