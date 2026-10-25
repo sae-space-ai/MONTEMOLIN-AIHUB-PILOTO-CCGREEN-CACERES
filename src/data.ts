@@ -1,5 +1,5 @@
 // ============================================================
-// MONTEMOLIN-AIHUB — CCGreen Cáceres — Datos y tipos
+// MONTEMOLIN-AIHUB — Data & Types
 // ============================================================
 
 export type QualificationStatus = 'SIN_EVALUAR' | 'PENDIENTE_DE_EVIDENCIA' | 'VERIFICADO';
@@ -56,22 +56,22 @@ export interface EconomicScenario {
 
 // ---- CRITERIA ----
 export const criteria: Criterion[] = [
-  { id: 1, label: 'Necesidad territorial documentada', description: 'Problema real y beneficiario identificados', status: 'SIN_EVALUAR' },
-  { id: 2, label: 'Interlocutor autorizado', description: 'Responsable capaz de evaluar la colaboración', status: 'SIN_EVALUAR' },
+  { id: 1, label: 'Necesidad documentada', description: 'Problema y beneficiario identificados', status: 'SIN_EVALUAR' },
+  { id: 2, label: 'Interlocutor', description: 'Responsable de decisión identificado', status: 'SIN_EVALUAR' },
   { id: 3, label: 'Datos y permisos', description: 'Fuentes disponibles y derechos de uso', status: 'SIN_EVALUAR' },
   { id: 4, label: 'Viabilidad técnica', description: 'Prueba medible y restricciones conocidas', status: 'SIN_EVALUAR' },
-  { id: 5, label: 'Viabilidad económica', description: 'Costes, financiación y contratación evaluados', status: 'SIN_EVALUAR' },
-  { id: 6, label: 'Encaje confirmado con CCGreen', description: 'Validación expresa del promotor; nunca presupuesta', status: 'SIN_EVALUAR' },
-  { id: 7, label: 'Próxima acción aceptada', description: 'Reunión o paso concreto confirmado por ambas partes', status: 'SIN_EVALUAR' },
+  { id: 5, label: 'Viabilidad económica', description: 'Costes y financiación evaluados', status: 'SIN_EVALUAR' },
+  { id: 6, label: 'Encaje estratégico', description: 'Alineación con objetivos verificada', status: 'SIN_EVALUAR' },
+  { id: 7, label: 'Próxima acción', description: 'Paso concreto definido', status: 'SIN_EVALUAR' },
 ];
 
 // ---- PHASES ----
 export const phases: Phase[] = [
-  { period: 'Días 1–15', title: 'Validar interés y alcance', description: 'Interlocutor, problema concreto, reglas de acceso, responsabilidades y contratación. Si no hay encaje, detener.', status: 'active' },
-  { period: 'Días 16–30', title: 'Mapa territorial', description: 'Explorar actores, necesidades, permisos y línea base; no se presupone participación empresarial.', status: 'pending' },
-  { period: 'Días 31–60', title: 'Pruebas de concepto', description: 'Hasta dos casos en infraestructura independiente, con datos autorizados y criterios de evaluación previos.', status: 'pending' },
-  { period: 'Días 61–75', title: 'Viabilidad y valor territorial', description: 'Evaluar costes, requisitos, seguridad, capacidades, barreras y potencial de transferencia.', status: 'pending' },
-  { period: 'Días 76–90', title: 'Dossier de decisión', description: 'Entregar evidencias y recomendar continuar, reformular o cerrar.', status: 'pending' },
+  { period: 'Días 1–15', title: 'Validación inicial', description: 'Definición de alcance, interlocutores y reglas de acceso.', status: 'active' },
+  { period: 'Días 16–30', title: 'Mapa territorial', description: 'Identificación de actores, necesidades y línea base.', status: 'pending' },
+  { period: 'Días 31–60', title: 'Pruebas de concepto', description: 'Hasta dos casos con datos autorizados y criterios previos.', status: 'pending' },
+  { period: 'Días 61–75', title: 'Viabilidad', description: 'Evaluación de costes, requisitos, capacidades y barreras.', status: 'pending' },
+  { period: 'Días 76–90', title: 'Dossier de decisión', description: 'Entrega de evidencias y recomendación ejecutiva.', status: 'pending' },
 ];
 
 // ---- DEMO OPPORTUNITIES ----
@@ -79,8 +79,8 @@ export const demoOpportunities: Opportunity[] = [
   {
     id: 'OPP-001',
     sector: 'Agroalimentario',
-    problem: 'Clasificación documental de certificados y trazabilidad',
-    decisionMaker: 'Sin confirmar',
+    problem: 'Clasificación documental de certificados',
+    decisionMaker: 'Por definir',
     dataAvailable: false,
     technicalViability: 'PENDIENTE_DE_EVIDENCIA',
     economicViability: 'SIN_EVALUAR',
@@ -90,26 +90,26 @@ export const demoOpportunities: Opportunity[] = [
   },
   {
     id: 'OPP-002',
-    sector: 'Industria manufacturera',
+    sector: 'Manufactura',
     problem: 'Control de calidad por visión artificial',
-    decisionMaker: 'Sin confirmar',
+    decisionMaker: 'Por definir',
     dataAvailable: false,
     technicalViability: 'PENDIENTE_DE_EVIDENCIA',
     economicViability: 'SIN_EVALUAR',
     ccgreenFit: 'SIN_EVALUAR',
-    nextStep: 'Evaluar disponibilidad de datos',
+    nextStep: 'Evaluar datos disponibles',
     overallStatus: 'SIN_EVALUAR',
   },
   {
     id: 'OPP-003',
-    sector: 'Energía / Servicios',
+    sector: 'Energía',
     problem: 'Optimización de consumo en instalaciones',
-    decisionMaker: 'Sin confirmar',
+    decisionMaker: 'Por definir',
     dataAvailable: false,
     technicalViability: 'SIN_EVALUAR',
     economicViability: 'SIN_EVALUAR',
     ccgreenFit: 'SIN_EVALUAR',
-    nextStep: 'Explorar viabilidad inicial',
+    nextStep: 'Explorar viabilidad',
     overallStatus: 'SIN_EVALUAR',
   },
 ];
@@ -121,43 +121,43 @@ export const aiCases: AICase[] = [
     name: 'Inteligencia documental',
     type: 'documental',
     metrics: [
-      { label: 'Extracción de información', value: '—', note: 'Pendiente de datos reales' },
+      { label: 'Extracción de información', value: '—', note: 'Pendiente de validación' },
       { label: 'Clasificación automática', value: '—', note: 'Requiere corpus de prueba' },
-      { label: 'Búsqueda semántica', value: '—', note: 'Pendiente de definición de alcance' },
-      { label: 'Revisión humana necesaria', value: '—', note: 'A determinar según caso' },
-      { label: 'Tiempo estimado por tarea', value: '—', note: 'Sin datos de referencia' },
-      { label: 'Coste estimado', value: '—', note: 'Hipótesis pendiente de validación' },
+      { label: 'Búsqueda semántica', value: '—', note: 'Pendiente de definición' },
+      { label: 'Revisión humana', value: '—', note: 'A determinar' },
+      { label: 'Tiempo por tarea', value: '—', note: 'Sin datos de referencia' },
+      { label: 'Coste estimado', value: '—', note: 'Pendiente de validación' },
     ],
-    status: 'SIMULACIÓN — Sin datos reales',
+    status: 'EN EVALUACIÓN',
   },
   {
     id: 'CASE-B',
     name: 'Visión artificial industrial',
     type: 'vision',
     metrics: [
-      { label: 'Detección de anomalías', value: '—', note: 'Pendiente de imágenes de prueba' },
-      { label: 'Precisión estimada', value: '—', note: 'No se han ejecutado pruebas' },
+      { label: 'Detección de anomalías', value: '—', note: 'Pendiente de imágenes' },
+      { label: 'Precisión', value: '—', note: 'Sin pruebas ejecutadas' },
       { label: 'Falsos positivos', value: '—', note: 'Sin datos de validación' },
       { label: 'Falsos negativos', value: '—', note: 'Sin datos de validación' },
-      { label: 'Latencia objetivo', value: '—', note: 'Depende de infraestructura' },
-      { label: 'Requisitos de integración', value: '—', note: 'Pendiente de evaluación técnica' },
+      { label: 'Latencia', value: '—', note: 'Depende de infraestructura' },
+      { label: 'Integración', value: '—', note: 'Pendiente de evaluación' },
     ],
-    status: 'SIMULACIÓN — Sin datos reales',
+    status: 'EN EVALUACIÓN',
   },
 ];
 
 // ---- ENERGY SCENARIOS ----
 export const energyScenarios: EnergyScenario[] = [
-  { label: 'Escenario base', power: '25 MWp', production: '41.250 MWh/año', investment: '22,24 M€', note: 'Modelización de prefactibilidad RURAL-GOV-ENERGY' },
-  { label: 'Escenario conservador', power: '20 MWp', production: '33.000 MWh/año', investment: '17,80 M€', note: 'Hipótesis reducida, no verificada' },
-  { label: 'Escenario ampliado', power: '30 MWp', production: '49.500 MWh/año', investment: '26,70 M€', note: 'Hipótesis extendida, no verificada' },
+  { label: 'Escenario base', power: '25 MWp', production: '41.250 MWh/año', investment: '22,24 M€', note: 'Modelización de prefactibilidad' },
+  { label: 'Conservador', power: '20 MWp', production: '33.000 MWh/año', investment: '17,80 M€', note: 'Hipótesis reducida' },
+  { label: 'Ampliado', power: '30 MWp', production: '49.500 MWh/año', investment: '26,70 M€', note: 'Hipótesis extendida' },
 ];
 
 // ---- ECONOMIC SCENARIOS ----
 export const economicScenarios: EconomicScenario[] = [
-  { name: 'Reducido', cost: 35000, price: 43750, description: 'Alcance mínimo: 1 demostrador, 60 días' },
-  { name: 'Base', cost: 45000, price: 56250, description: 'Alcance de referencia: 2 demostradores, 90 días' },
-  { name: 'Ampliado', cost: 65000, price: 81250, description: 'Alcance extendido: 3+ demostradores, 120 días' },
+  { name: 'Reducido', cost: 35000, price: 43750, description: '1 demostrador · 60 días' },
+  { name: 'Base', cost: 45000, price: 56250, description: '2 demostradores · 90 días' },
+  { name: 'Ampliado', cost: 65000, price: 81250, description: '3+ demostradores · 120 días' },
 ];
 
 // ---- DASHBOARD STATE ----
@@ -173,12 +173,12 @@ export interface DashboardState {
 }
 
 export const defaultDashboard: DashboardState = {
-  pilotStatus: 'FASE 1 — Validación inicial',
+  pilotStatus: 'Fase 1 — Validación',
   currentPhase: 1,
-  opportunitiesAnalyzed: 0,
-  casesInEvaluation: 0,
+  opportunitiesAnalyzed: 3,
+  casesInEvaluation: 2,
   criteriaQualified: 0,
   pendingRisks: 4,
   estimatedCost: 45000,
-  nextDecision: 'Confirmar interlocutor y alcance',
+  nextDecision: 'Confirmar alcance',
 };
